@@ -37,7 +37,7 @@
         </div>
         <div style="display: flex; flex-direction: column; grid-column: span 1;">
           <label style="font-size: 12px; font-weight: bold; margin-bottom: 2px;">Motivo:</label>
-          <input v-model="consultaForm.motivo" type="text" placeholder="Motivo clínico da consulta" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+          <input v-model="consultaForm.motivo" type="text" placeholder="Motivo clínico da consulta" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
         </div>
         <div style="display: flex; gap: 5px; align-items: flex-end;">
           <button type="submit" style="flex: 1; background-color: #2ecc71; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 37px;">
@@ -52,7 +52,9 @@
       <input type="text" v-model="filtro" placeholder="🔍 Filtrar consultas por nome ou motivo..." style="padding: 10px; width: 100%; max-width: 400px; border: 1px solid #ccc; border-radius: 4px;" />
     </div>
 
-    <div v-if="loading" style="color: #3498db;">🔄 Sincronizando agendas...</div>
+    <div v-if="loading" style="color: #3498db; font-weight: bold;">🔄 Sincronizando agendas...</div>
+    <div v-else-if="error" style="color: #e74c3c; background-color: #fce4e4; padding: 15px; border-radius: 4px; margin: 20px 0;">⚠️ {{ error }}</div>
+    
     <table v-else border="1" cellpadding="10" style="width: 100%; border-collapse: collapse; background-color: white; text-align: left;">
       <thead style="background-color: #f2f2f2;">
         <tr>
@@ -70,15 +72,18 @@
         <tr v-for="consulta in consultasFiltradas" :key="consulta.id">
           <td>{{ consulta.id }}</td>
           <td>{{ formatarDataHora(consulta.data_agendada) }}</td>
-          <td>{{ consulta.paciente_nome || consulta.paciente }}</td>
-          <td>{{ consulta.medico_nome || consulta.medico }}</td>
+          <td>👤 #{{ consulta.paciente }}</td>
+          <td>🩺 #{{ consulta.medico }}</td>
           <td><span :style="getEstiloPrioridade(consulta.nivel_prioridade)">{{ traduzirPrioridade(consulta.nivel_prioridade) }}</span></td>
           <td><span :style="getEstiloStatus(consulta.status)">{{ traduzirStatus(consulta.status) }}</span></td>
           <td>{{ consulta.motivo }}</td>
           <td style="text-align: center;">
-            <button @click="carregarParaEditar(consulta)" style="background-color: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; margin-right: 5px;">✏️</button>
-            <button @click="deletarConsulta(consulta.id)" style="background-color: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">🗑️</button>
+            <button @click="carregarParaEditar(consulta)" style="background-color: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-weight: bold;">✏️</button>
+            <button @click="deletarConsulta(consulta.id)" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">🗑️</button>
           </td>
+        </tr>
+        <tr v-if="consultasFiltradas.length === 0">
+          <td colspan="8" style="text-align: center; color: gray; padding: 15px;">Nenhuma consulta agendada encontrada.</td>
         </tr>
       </tbody>
     </table>
@@ -91,8 +96,19 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      consultas: [], filtro: '', loading: true, error: null, editandoId: null,
-      consultaForm: { data_agendada: '', paciente: null, medico: null, nivel_prioridade: 'N', status: 'AG', motivo: '' }
+      consultas: [],
+      filtro: '',
+      loading: true,
+      error: null,
+      editandoId: null,
+      consultaForm: {
+        data_agendada: '',
+        paciente: null,
+        medico: null,
+        nivel_prioridade: 'N',
+        status: 'AG',
+        motivo: ''
+      }
     };
   },
   computed: {
@@ -100,56 +116,111 @@ export default {
       if (!this.filtro) return this.consultas;
       const q = this.filtro.toLowerCase();
       return this.consultas.filter(c => 
-        String(c.paciente_nome || c.paciente).toLowerCase().includes(q) ||
-        String(c.medico_nome || c.medico).toLowerCase().includes(q) ||
+        String(c.paciente).toLowerCase().includes(q) ||
+        String(c.medico).toLowerCase().includes(q) ||
         String(c.motivo || '').toLowerCase().includes(q)
       );
     }
   },
   mounted() { this.buscarConsultas(); },
   methods: {
+    // 🔍 GET - Listar
     async buscarConsultas() {
       try {
+        this.loading = true;
         const response = await axios.get('http://localhost:8000/consulta/api/');
         this.consultas = response.data;
-      } catch (err) { this.error = "Erro."; } finally { this.loading = false; }
+        this.error = null;
+      } catch (err) {
+        console.error(err);
+        this.error = "Não foi possível carregar o agendamento de consultas. Verifique o back-end.";
+      } finally {
+        this.loading = false;
+      }
     },
+
+    // 💾 POST ou PUT - Salvar
     async salvarConsulta() {
       try {
-        // Formata a data ISO para envio correto se necessário
+        // Envia chaves limpas e tipadas perfeitamente para o back-end
+        const payload = {
+          data_agendada: new Date(this.consultaForm.data_agendada).toISOString(),
+          paciente: parseInt(this.consultaForm.paciente),
+          medico: parseInt(this.consultaForm.medico),
+          nivel_prioridade: this.consultaForm.nivel_prioridade,
+          status: this.consultaForm.status,
+          motivo: this.consultaForm.motivo.trim()
+        };
+
         if (this.editandoId) {
-          const response = await axios.put(`http://localhost:8000/consulta/api/${this.editandoId}/`, this.consultaForm);
+          const response = await axios.put(`http://localhost:8000/consulta/api/${this.editandoId}/`, payload);
           const idx = this.consultas.findIndex(c => c.id === this.editandoId);
           this.consultas[idx] = response.data;
           this.editandoId = null;
+          alert("Consulta remarcada/alterada com sucesso!");
         } else {
-          const response = await axios.post('http://localhost:8000/consulta/api/', this.consultaForm);
+          const response = await axios.post('http://localhost:8000/consulta/api/', payload);
           this.consultas.push(response.data);
+          alert("Consulta agendada com sucesso!");
         }
-        this.consultaForm = { data_agendada: '', paciente: null, medico: null, nivel_prioridade: 'N', status: 'AG', motivo: '' };
-      } catch (err) { alert("Verifique as chaves estrangeiras de Médico e Paciente."); }
+        this.resetarFormulario();
+      } catch (err) {
+        console.error("Erro completo do Django:", err.response?.data || err);
+        alert("Erro ao salvar consulta. Certifique-se de que os IDs de Médico e Paciente existem cadastrados no sistema.");
+      }
     },
+
     carregarParaEditar(c) {
       this.editandoId = c.id;
-      // Trata formato de data para o input datetime-local
-      let dataFormatada = c.data_agendada ? c.data_agendada.substring(0, 16) : '';
-      this.consultaForm = { ...c, data_agendada: dataFormatada };
+      // Garante a conversão do padrão UTC/ISO do banco para o input datetime-local nativo do HTML
+      let dataFormatada = '';
+      if (c.data_agendada) {
+        const dataObjeto = new Date(c.data_agendada);
+        // Desloca fuso horário local para o formato 'AAAA-MM-DDTHH:MM'
+        const offset = dataObjeto.getTimezoneOffset() * 60000;
+        const localISOTime = new Date(dataObjeto.getTime() - offset).toISOString();
+        dataFormatada = localISOTime.substring(0, 16);
+      }
+      
+      this.consultaForm = {
+        data_agendada: dataFormatada,
+        paciente: c.paciente,
+        medico: c.medico,
+        nivel_prioridade: c.nivel_prioridade,
+        status: c.status,
+        motivo: c.motivo
+      };
     },
-    cancelarEdicao() { this.editandoId = null; this.consultaForm = { data_agendada: '', paciente: null, medico: null, nivel_prioridade: 'N', status: 'AG', motivo: '' }; },
+
+    cancelarEdicao() {
+      this.editandoId = null;
+      this.resetarFormulario();
+    },
+
+    resetarFormulario() {
+      this.consultaForm = { data_agendada: '', paciente: null, medico: null, nivel_prioridade: 'N', status: 'AG', motivo: '' };
+    },
+
+    // 🗑️ DELETE - Apagar
     async deletarConsulta(id) {
-      if (!confirm("Cancelar e excluir consulta?")) return;
+      if (!confirm("Tem certeza que deseja cancelar e desmarcar permanentemente esta consulta?")) return;
       try {
         await axios.delete(`http://localhost:8000/consulta/api/${id}/`);
         this.consultas = this.consultas.filter(c => c.id !== id);
-      } catch (err) { alert("Erro ao deletar."); }
+        alert("Consulta cancelada e removida com sucesso!");
+      } catch (err) {
+        console.error(err);
+        alert("Não foi possível excluir a consulta. Verifique dependências de chaves estrangeiras (como atestados vinculados).");
+      }
     },
+
     formatarDataHora(d) { return d ? new Date(d).toLocaleString('pt-BR') : '-'; },
     traduzirStatus(s) { return { 'AG': 'Agendada', 'RE': 'Realizada', 'CA': 'Cancelada' }[s] || s; },
     getEstiloStatus(s) { return { 'AG': 'color: #3498db; font-weight: bold;', 'RE': 'color: #2ecc71; font-weight: bold;', 'CA': 'color: #95a5a6; text-decoration: line-through;' }[s] || ''; },
     traduzirPrioridade(p) { return { 'B': 'Baixa', 'N': 'Normal', 'A': 'Alta', 'U': 'Urgência' }[p] || p; },
     getEstiloPrioridade(n) {
       return {
-        'B': 'background-color: #ecf0f1; padding: 3px 8px; border-radius: 4px;',
+        'B': 'background-color: #ecf0f1; padding: 3px 8px; border-radius: 4px; color: #7f8c8d;',
         'N': 'background-color: #dff0d8; color: #3c763d; padding: 3px 8px; border-radius: 4px;',
         'A': 'background-color: #fcf8e3; color: #8a6d3b; padding: 3px 8px; border-radius: 4px; font-weight: bold;',
         'U': 'background-color: #f2dede; color: #a94442; padding: 3px 8px; border-radius: 4px; font-weight: bold;'
