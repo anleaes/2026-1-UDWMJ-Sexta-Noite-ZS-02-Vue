@@ -11,11 +11,15 @@ import MedicamentoView from '../pages/MedicamentoView.vue'
 import ReceitaView from '../pages/ReceitaView.vue'
 import ExameSolicitadoView from '../pages/ExameSolicitadoView.vue'
 import ResultadoExameView from '../pages/ResultadoExameView.vue'
+import HomeView from '../pages/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    { path: '/', redirect: '/cids' },
+    // Rota Raiz agora carrega o Dashboard de forma absoluta
+    { path: '/', name: 'Home', component: HomeView },
+    
+    // Demais rotas do ecossistema clínico
     { path: '/pacientes', name: 'pacientes', component: PacienteView },
     { path: '/medicos', name: 'medicos', component: MedicoView },
     { path: '/anamneses', name: 'anamneses', component: AnamneseView },
@@ -25,7 +29,7 @@ const router = createRouter({
     { path: '/medicamentos', name: 'medicamentos', component: MedicamentoView },
     { path: '/receitas', name: 'receitas', component: ReceitaView },
     { path: '/exames-solicitados', name: 'examesSolicitados', component: ExameSolicitadoView },
-    { path: '/resultados-exames', name: 'resultadosExames', component: ResultadoExameView },
+    { path: '/resultados-exames', name: 'resultadosExames', component: ResultadoExameView }
   ],
 })
 
