@@ -1,14 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import PacienteView from '../views/PacienteView.vue'
-import MedicoView from '../views/MedicoView.vue'
-import AnamneseView from '../views/AnamneseView.vue'
-import ConsultaView from '../views/ConsultaView.vue'
-import CidView from '../views/CidView.vue'
-import AtestadoView from '../views/AtestadoView.vue'
-import MedicamentoView from '../views/MedicamentoView.vue'
-import ReceitaView from '../views/ReceitaView.vue'
-import ExameSolicitadoView from '../views/ExameSolicitadoView.vue'
-import ResultadoExameView from '../views/ResultadoExameView.vue'
+
+// Ajuste: remova o .vue/index.js e aponte direto para o arquivo .vue
+import PacienteView from '../pages/PacienteView.vue'
+import MedicoView from '../pages/MedicoView.vue'
+import AnamneseView from '../pages/AnamneseView.vue'
+import ConsultaView from '../pages/ConsultaView.vue'
+import CidView from '../pages/CidView.vue'
+import AtestadoView from '../pages/AtestadoView.vue'
+import MedicamentoView from '../pages/MedicamentoView.vue'
+import ReceitaView from '../pages/ReceitaView.vue'
+import ExameSolicitadoView from '../pages/ExameSolicitadoView.vue'
+import ResultadoExameView from '../pages/ResultadoExameView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
