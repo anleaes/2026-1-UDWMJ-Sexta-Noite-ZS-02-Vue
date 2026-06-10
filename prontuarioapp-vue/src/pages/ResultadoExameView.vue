@@ -1,172 +1,167 @@
 <template>
-  <div class="resultado-view">
-    <h1>Resultados e Laudos de Exames</h1>
+  <q-page padding>
+    <div class="text-h4 text-weight-bold q-mb-md">Resultados e Laudos de Exames</div>
 
-    <ResultadoExameCard 
-      v-model="form" 
+    <ResultadoExameCard
+      v-model="form"
       :listaExames="exames"
-      @salvar="salvarResultado" 
-      @cancelar="cancelarEdicao" 
+      @salvar="salvarResultado"
+      @cancelar="cancelarEdicao"
     />
 
-    <hr />
+    <q-card bordered class="q-mb-lg">
+      <q-card-section>
+        <div class="text-subtitle1 text-weight-bold q-mb-md">Filtrar Laudos</div>
+        <div class="row q-col-gutter-sm items-end">
+          <div class="col-grow">
+            <q-input v-model="termoBusca" label="Pesquisar..." outlined dense clearable>
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <div class="col-auto">
+            <q-select
+              v-model="ordenacaoSelecionada"
+              :options="opcoesOrdenacao"
+              label="Ordenar por"
+              outlined dense
+              emit-value map-options
+              option-value="value" option-label="label"
+              style="min-width: 220px"
+            />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
-    <div class="busca-container">
-      <h3>Filtrar Laudos</h3>
-      <div class="busca-input-grupo">
-        <input 
-          v-model="termoBusca" 
-          placeholder="Buscar por conclusões ou nome do exame..." 
-          class="input-busca"
-        />
-        <button v-if="termoBusca" @click="limparBusca" class="btn-limpar-busca">Limpar</button>
-      </div>
+    <div class="text-subtitle1 text-weight-bold q-mb-md">Laudos Registrados</div>
+    <q-inner-loading :showing="carregando" label="Buscando laudos laboratoriais no servidor Django..." />
+    <div v-if="!carregando">
+      <p v-if="resultadosFiltrados.length === 0" class="text-grey-7">Nenhum laudo de exame localizado.</p>
+      <ResultadoExameItem
+        v-for="resultado in resultadosFiltrados"
+        :key="resultado.id"
+        :resultado="resultado"
+        :nomeExame="obterNomeExame(resultado.exame_solicitado)"
+        @editar="prepararEdicao"
+        @deletar="deletarResultado"
+      />
     </div>
-
-    <div class="lista-secao">
-      <h3>Laudos Registrados</h3>
-      <div v-if="carregando">Buscando laudos laboratoriais no servidor Django...</div>
-      <div v-else>
-        <p v-if="resultadosFiltrados.length === 0">Nenhum laudo de exame localizado.</p>
-        
-        <ResultadoExameItem 
-          v-for="resultado in resultadosFiltrados" 
-          :key="resultado.id" 
-          :resultado="resultado"
-          :nomeExame="obterNomeExame(resultado.exame_solicitado)"
-          @editar="prepararEdicao"
-          @deletar="deletarResultado"
-        />
-      </div>
-    </div>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import api from '../services/api.js';
-import ResultadoExameCard from '../components/ResultadoExameCard.vue';
-import ResultadoExameItem from '../components/ResultadoExameItem.vue';
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import api from '../services/api.js'
+import ResultadoExameCard from '../components/ResultadoExameCard.vue'
+import ResultadoExameItem from '../components/ResultadoExameItem.vue'
 
-const resultados = ref([]);
-const exames = ref([]);
-const carregando = ref(true);
-const termoBusca = ref('');
+const $q = useQuasar()
+const resultados = ref([])
+const exames = ref([])
+const carregando = ref(true)
+const termoBusca = ref('')
+const ordenacaoSelecionada = ref('data_desc')
+
+const opcoesOrdenacao = [
+  { label: 'Data do resultado (mais recente)', value: 'data_desc' },
+  { label: 'Data do resultado (mais antiga)', value: 'data_asc' },
+]
 
 const estadoInicialForm = () => ({
-  id: null,
-  data_resultado: '',
-  conclusoes: '',
-  valor: '',
-  unidade_medida: '',
-  exame_solicitado: ''
-});
+  id: null, data_resultado: '', conclusoes: '', valor: '', unidade_medida: '', exame_solicitado: ''
+})
 
-const form = ref(estadoInicialForm());
+const form = ref(estadoInicialForm())
 
 const carregarDadosDoSistema = async () => {
-  carregando.value = true;
+  carregando.value = true
   try {
     const carregarTabela = async (url) => {
       try {
-        const res = await api.get(url);
-        return res.data;
-      } catch (err) {
-        console.warn(`Aviso: Falha sutil ao tentar mapear endpoint [${url}].`);
-        return [];
+        const res = await api.get(url)
+        return res.data
+      } catch {
+        console.warn(`Aviso: Falha sutil ao tentar mapear endpoint [${url}].`)
+        return []
       }
-    };
-
-    // Carrega a tabela base de exames solicitados (tentando as duas rotas comuns)
-    let dadosExames = await carregarTabela('exameSolicitado/api/');
-    if (dadosExames.length === 0) {
-      dadosExames = await carregarTabela('examesolicitado/api/');
     }
-    exames.value = dadosExames;
 
-    // Carrega a tabela de resultados do laudo
-    resultados.value = await carregarTabela('resultadoexame/api/');
+    let dadosExames = await carregarTabela('exameSolicitado/api/')
+    if (dadosExames.length === 0) dadosExames = await carregarTabela('examesolicitado/api/')
+    exames.value = dadosExames
 
+    resultados.value = await carregarTabela('resultadoexame/api/')
   } catch (error) {
-    console.error("Erro geral no carregamento de laudos:", error);
+    console.error('Erro geral no carregamento de laudos:', error)
   } finally {
-    carregando.value = false;
+    carregando.value = false
   }
-};
+}
 
 const salvarResultado = async () => {
   try {
     if (form.value.id) {
-      await api.put(`resultadoexame/api/${form.value.id}/`, form.value);
-      alert("Laudo de resultado atualizado!");
+      await api.put(`resultadoexame/api/${form.value.id}/`, form.value)
+      $q.notify({ type: 'positive', message: 'Laudo de resultado atualizado!' })
     } else {
-      await api.post('resultadoexame/api/', form.value);
-      alert("Laudo de exame lançado com sucesso!");
+      await api.post('resultadoexame/api/', form.value)
+      $q.notify({ type: 'positive', message: 'Laudo de exame lançado com sucesso!' })
     }
-    form.value = estadoInicialForm();
-    carregarDadosDoSistema();
+    form.value = estadoInicialForm()
+    carregarDadosDoSistema()
   } catch (error) {
-    console.error("Erro ao salvar resultado de exame:", error);
-    alert("Falha ao salvar. Verifique se os dados numéricos e campos textuais foram preenchidos.");
+    console.error('Erro ao salvar resultado de exame:', error)
+    $q.notify({ type: 'negative', message: 'Falha ao salvar. Verifique se os dados numéricos e campos textuais foram preenchidos.' })
   }
-};
+}
 
-const deletarResultado = async (id) => {
-  if (confirm("Tem certeza de que deseja excluir permanentemente este laudo?")) {
+const deletarResultado = (id) => {
+  $q.dialog({
+    title: 'Confirmar exclusão',
+    message: 'Tem certeza de que deseja excluir permanentemente este laudo?',
+    cancel: { label: 'Cancelar', flat: true, color: 'grey' },
+    ok: { label: 'Excluir', color: 'negative' },
+    persistent: true
+  }).onOk(async () => {
     try {
-      await api.delete(`resultadoexame/api/${id}/`);
-      carregarDadosDoSistema();
+      await api.delete(`resultadoexame/api/${id}/`)
+      carregarDadosDoSistema()
     } catch (error) {
-      console.error("Erro ao deletar registro:", error);
+      console.error('Erro ao deletar registro:', error)
     }
-  }
-};
+  })
+}
 
 const obterNomeExame = (idExame) => {
-  const ex = exames.value.find(item => item.id === idExame);
-  return ex ? ex.nome_exame : 'Exame não identificado';
-};
+  const ex = exames.value.find(item => item.id === idExame)
+  return ex ? ex.nome_exame : 'Exame não identificado'
+}
 
 const prepararEdicao = (resultado) => {
-  form.value = { ...resultado };
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+  form.value = { ...resultado }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
-const cancelarEdicao = () => {
-  form.value = estadoInicialForm();
-};
+const cancelarEdicao = () => { form.value = estadoInicialForm() }
 
 const resultadosFiltrados = computed(() => {
-  if (!termoBusca.value) {
-    return resultados.value;
+  let lista = [...resultados.value]
+  if (termoBusca.value) {
+    const termo = termoBusca.value.toLowerCase()
+    lista = lista.filter(res => {
+      const conc = res.conclusoes.toLowerCase()
+      const exNome = obterNomeExame(res.exame_solicitado).toLowerCase()
+      return conc.includes(termo) || exNome.includes(termo)
+    })
   }
-  const termo = termoBusca.value.toLowerCase();
-  return resultados.value.filter(res => {
-    const conc = res.conclusoes.toLowerCase();
-    const exNome = obterNomeExame(res.exame_solicitado).toLowerCase();
-    return conc.includes(termo) || exNome.includes(termo);
-  });
-});
+  lista.sort((a, b) => {
+    const da = new Date(a.data_resultado)
+    const db = new Date(b.data_resultado)
+    return ordenacaoSelecionada.value === 'data_asc' ? da - db : db - da
+  })
+  return lista
+})
 
-const limparBusca = () => {
-  termoBusca.value = '';
-};
-
-onMounted(() => {
-  carregarDadosDoSistema();
-});
+onMounted(() => { carregarDadosDoSistema() })
 </script>
-
-<style scoped>
-.resultado-view { padding: 20px; font-family: sans-serif; }
-.lista-secao { margin-top: 20px; }
-hr { border: 0; border-top: 1px solid #eee; margin: 30px 0; }
-
-.busca-container { margin-bottom: 25px; background: #fdfdfd; padding: 15px; border-radius: 6px; border: 1px solid #eaeaea; }
-.busca-container h3 { margin-top: 0; margin-bottom: 10px; color: #333; }
-.busca-input-grupo { display: flex; gap: 10px; max-width: 600px; }
-.input-busca { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-.input-busca:focus { border-color: #2196f3; outline: none; }
-.btn-limpar-busca { padding: 10px 15px; background-color: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; }
-.btn-limpar-busca:hover { background-color: #d5d5d5; }
-</style>

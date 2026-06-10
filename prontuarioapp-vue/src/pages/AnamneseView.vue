@@ -1,177 +1,169 @@
 <template>
-  <div class="anamnese-view">
-    <h1>Histórico Clínico - Anamneses</h1>
+  <q-page padding>
+    <div class="text-h4 text-weight-bold q-mb-md">Histórico Clínico - Anamneses</div>
 
-    <AnamneseCard 
-      v-model="form" 
+    <AnamneseCard
+      v-model="form"
       :listaPacientes="pacientes"
       :listaMedicos="medicos"
       @salvar="salvarAnamnese"
-      @cancelar="cancelarEdicao" 
+      @cancelar="cancelarEdicao"
     />
 
-    <hr />
+    <q-card bordered class="q-mb-lg">
+      <q-card-section>
+        <div class="text-subtitle1 text-weight-bold q-mb-md">Buscar por Prontuários</div>
+        <div class="row q-col-gutter-sm items-end">
+          <div class="col-grow">
+            <q-input v-model="termoBusca" label="Pesquisar..." outlined dense clearable>
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <div class="col-auto">
+            <q-select
+              v-model="ordenacaoSelecionada"
+              :options="opcoesOrdenacao"
+              label="Ordenar por"
+              outlined dense
+              emit-value map-options
+              option-value="value" option-label="label"
+              style="min-width: 220px"
+            />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
-    <div class="busca-container">
-      <h3>Buscar por Prontuários</h3>
-      <div class="busca-input-grupo">
-        <input 
-          v-model="termoBusca" 
-          placeholder="Buscar por nome do paciente, médico ou sintomas..." 
-          class="input-busca"
-        />
-        <button v-if="termoBusca" @click="limparBusca" class="btn-limpar-busca">Limpar</button>
-      </div>
+    <div class="text-subtitle1 text-weight-bold q-mb-md">Registros Clínicos Recentes</div>
+    <q-inner-loading :showing="carregando" label="Buscando prontuários de anamnese no servidor Django..." />
+    <div v-if="!carregando">
+      <p v-if="anamnesesFiltradas.length === 0" class="text-grey-7">Nenhum registro clínico encontrado.</p>
+      <AnamneseItem
+        v-for="anamnese in anamnesesFiltradas"
+        :key="anamnese.id"
+        :anamnese="anamnese"
+        :nomePaciente="obterNomePaciente(anamnese.paciente)"
+        :nomeMedico="obterNomeMedico(anamnese.medico)"
+        @editar="prepararEdicao"
+        @deletar="deletarAnamnese"
+      />
     </div>
-
-    <div class="lista-secao">
-      <h3>Registros Clinicos Recentes</h3>
-      <div v-if="carregando">Buscando prontuários de anamnese no servidor Django...</div>
-      <div v-else>
-        <p v-if="anamnesesFiltradas.length === 0">Nenhum registro clínico encontrado.</p>
-        
-        <AnamneseItem 
-          v-for="anamnese in anamnesesFiltradas" 
-          :key="anamnese.id" 
-          :anamnese="anamnese"
-          :nomePaciente="obterNomePaciente(anamnese.paciente)"
-          :nomeMedico="obterNomeMedico(anamnese.medico)"
-          @editar="prepararEdicao"
-          @deletar="deletarAnamnese"
-        />
-      </div>
-    </div>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import api from '../services/api.js';
-import AnamneseCard from '../components/AnamneseCard.vue';
-import AnamneseItem from '../components/AnamneseItem.vue';
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import api from '../services/api.js'
+import AnamneseCard from '../components/AnamneseCard.vue'
+import AnamneseItem from '../components/AnamneseItem.vue'
 
-// Estados locais das tabelas relacionadas
-const anamneses = ref([]);
-const pacientes = ref([]);
-const medicos = ref([]);
-const carregando = ref(true);
-const termoBusca = ref('');
+const $q = useQuasar()
+const anamneses = ref([])
+const pacientes = ref([])
+const medicos = ref([])
+const carregando = ref(true)
+const termoBusca = ref('')
+const ordenacaoSelecionada = ref('data_desc')
+
+const opcoesOrdenacao = [
+  { label: 'Data (mais recente)', value: 'data_desc' },
+  { label: 'Data (mais antiga)', value: 'data_asc' },
+]
 
 const estadoInicialForm = () => ({
-  id: null,
-  paciente: '',
-  medico: '',
-  queixa_principal: '',
-  alergias: '',
-  medicamentos: '',
-  alcool: 'NAO',
-  fumante: 'NAO'
-});
+  id: null, paciente: '', medico: '', queixa_principal: '', alergias: '',
+  medicamentos: '', alcool: 'NAO', fumante: 'NAO'
+})
 
-const form = ref(estadoInicialForm());
+const form = ref(estadoInicialForm())
 
-// Carregamento multi-tabelas simultâneo (Carga Relacional)
 const carregarDadosDoSistema = async () => {
-  carregando.value = true;
+  carregando.value = true
   try {
     const [resAnamneses, resPacientes, resMedicos] = await Promise.all([
       api.get('anamnese/api/'),
       api.get('paciente/api/'),
       api.get('medico/api/')
-    ]);
-    anamneses.value = resAnamneses.data;
-    pacientes.value = resPacientes.data;
-    medicos.value = resMedicos.data;
+    ])
+    anamneses.value = resAnamneses.data
+    pacientes.value = resPacientes.data
+    medicos.value = resMedicos.data
   } catch (error) {
-    console.error("Erro na carga de dados relacionais:", error);
+    console.error('Erro na carga de dados relacionais:', error)
   } finally {
-    carregando.value = false;
+    carregando.value = false
   }
-};
+}
 
-// POST / PATCH
 const salvarAnamnese = async () => {
   try {
     if (form.value.id) {
-      await api.patch(`anamnese/api/${form.value.id}/`, form.value);
-      alert("Anamnese atualizada com sucesso!");
+      await api.patch(`anamnese/api/${form.value.id}/`, form.value)
+      $q.notify({ type: 'positive', message: 'Anamnese atualizada com sucesso!' })
     } else {
-      await api.post('anamnese/api/', form.value);
-      alert("Anamnese registrada com sucesso!");
+      await api.post('anamnese/api/', form.value)
+      $q.notify({ type: 'positive', message: 'Anamnese registrada com sucesso!' })
     }
-    form.value = estadoInicialForm();
-    carregarDadosDoSistema();
+    form.value = estadoInicialForm()
+    carregarDadosDoSistema()
   } catch (error) {
-    console.error("Erro ao salvar anamnese no Django:", error.response?.data || error);
-    alert("Falha ao salvar o prontuário. Revise as seleções e os campos.");
+    console.error('Erro ao salvar anamnese no Django:', error.response?.data || error)
+    $q.notify({ type: 'negative', message: 'Falha ao salvar o prontuário. Revise as seleções e os campos.' })
   }
-};
+}
 
-// DELETE
-const deletarAnamnese = async (id) => {
-  if (confirm("Tem certeza que deseja remover esta anamnese definitivamente?")) {
+const deletarAnamnese = (id) => {
+  $q.dialog({
+    title: 'Confirmar exclusão',
+    message: 'Tem certeza que deseja remover esta anamnese definitivamente?',
+    cancel: { label: 'Cancelar', flat: true, color: 'grey' },
+    ok: { label: 'Excluir', color: 'negative' },
+    persistent: true
+  }).onOk(async () => {
     try {
-      await api.delete(`anamnese/api/${id}/`);
-      carregarDadosDoSistema();
+      await api.delete(`anamnese/api/${id}/`)
+      carregarDadosDoSistema()
     } catch (error) {
-      console.error("Erro ao deletar do Django:", error);
+      console.error('Erro ao deletar do Django:', error)
     }
-  }
-};
+  })
+}
 
-// Auxiliares de Cruzamento de chaves para resolução de IDs em Texto Legível
 const obterNomePaciente = (idPaciente) => {
-  const p = pacientes.value.find(item => item.id === idPaciente);
-  return p ? `${p.nome} ${p.sobrenome}` : 'Paciente não localizado';
-};
+  const p = pacientes.value.find(item => item.id === idPaciente)
+  return p ? `${p.nome} ${p.sobrenome}` : 'Paciente não localizado'
+}
 
 const obterNomeMedico = (idMedico) => {
-  const m = medicos.value.find(item => item.id === idMedico);
-  return m ? `${m.nome} ${m.sobrenome}` : 'Médico não localizado';
-};
+  const m = medicos.value.find(item => item.id === idMedico)
+  return m ? `${m.nome} ${m.sobrenome}` : 'Médico não localizado'
+}
 
 const prepararEdicao = (anamnese) => {
-  form.value = { ...anamnese };
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+  form.value = { ...anamnese }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
-const cancelarEdicao = () => {
-  form.value = estadoInicialForm();
-};
+const cancelarEdicao = () => { form.value = estadoInicialForm() }
 
-// Filtro Reativo Cruzado de Busca por Nome de Paciente, Médico ou Sintomas
 const anamnesesFiltradas = computed(() => {
-  if (!termoBusca.value) {
-    return anamneses.value;
+  let lista = [...anamneses.value]
+  if (termoBusca.value) {
+    const termo = termoBusca.value.toLowerCase()
+    lista = lista.filter(a => {
+      const pNome = obterNomePaciente(a.paciente).toLowerCase()
+      const mNome = obterNomeMedico(a.medico).toLowerCase()
+      return pNome.includes(termo) || mNome.includes(termo) || a.queixa_principal.toLowerCase().includes(termo)
+    })
   }
-  const termo = termoBusca.value.toLowerCase();
-  return anamneses.value.filter(a => {
-    const pNome = obterNomePaciente(a.paciente).toLowerCase();
-    const mNome = obterNomeMedico(a.medico).toLowerCase();
-    const queixa = a.queixa_principal.toLowerCase();
-    return pNome.includes(termo) || mNome.includes(termo) || queixa.includes(termo);
-  });
-});
+  lista.sort((a, b) => {
+    const da = new Date(a.data_criacao || 0)
+    const db = new Date(b.data_criacao || 0)
+    return ordenacaoSelecionada.value === 'data_asc' ? da - db : db - da
+  })
+  return lista
+})
 
-const limparBusca = () => {
-  termoBusca.value = '';
-};
-
-onMounted(() => {
-  carregarDadosDoSistema();
-});
+onMounted(() => { carregarDadosDoSistema() })
 </script>
-
-<style scoped>
-.anamnese-view { padding: 20px; font-family: sans-serif; }
-.lista-secao { margin-top: 20px; }
-hr { border: 0; border-top: 1px solid #eee; margin: 30px 0; }
-
-.busca-container { margin-bottom: 25px; background: #fdfdfd; padding: 15px; border-radius: 6px; border: 1px solid #eaeaea; }
-.busca-container h3 { margin-top: 0; margin-bottom: 10px; color: #333; }
-.busca-input-grupo { display: flex; gap: 10px; max-width: 600px; }
-.input-busca { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-.input-busca:focus { border-color: #2196f3; outline: none; }
-.btn-limpar-busca { padding: 10px 15px; background-color: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; }
-.btn-limpar-busca:hover { background-color: #d5d5d5; }
-</style>

@@ -1,317 +1,97 @@
 <template>
-  <div class="dashboard-wrapper">
-    <header class="dashboard-header">
-      <div class="header-titles">
-        <h1>Painel de Controle Clínico</h1>
-        <p>Visão geral do ecossistema de atendimento e indicadores em tempo real</p>
+  <q-page padding>
+    <div class="q-mb-lg">
+      <div class="text-h4 text-weight-bold text-secondary">Painel de Controle Clínico</div>
+      <div class="text-grey-7">Visão geral do ecossistema de atendimento e indicadores em tempo real</div>
+    </div>
+
+    <div class="row q-col-gutter-md q-mb-xl">
+      <div class="col-12 col-sm-6 col-md-3" v-for="metric in metricCards" :key="metric.key">
+        <q-card bordered class="metric-card" :style="{ borderLeft: `4px solid ${metric.color}` }">
+          <q-card-section>
+            <div class="row items-center justify-between">
+              <div class="text-caption text-grey-7 text-weight-medium text-uppercase">{{ metric.title }}</div>
+              <q-badge color="grey-3" text-color="grey-7">{{ metric.badge }}</q-badge>
+            </div>
+            <div class="text-h3 text-weight-bold text-secondary q-mt-sm">{{ totais[metric.key] }}</div>
+            <div class="text-caption text-grey-6">{{ metric.subtitle }}</div>
+          </q-card-section>
+        </q-card>
       </div>
-    </header>
+    </div>
 
-    <section class="metrics-grid">
-      <div class="metric-card branch-blue">
-        <div class="metric-header">
-          <span class="metric-title">Consultas Agendadas</span>
-          <div class="mini-icon">REG</div>
-        </div>
-        <div class="metric-body">
-          <span class="metric-value">{{ totais.consultas }}</span>
-          <span class="metric-badge">Pacientes do dia</span>
-        </div>
+    <div class="text-h6 text-weight-bold text-grey-8 q-mb-md">Módulos de Acesso Rápido</div>
+
+    <div class="row q-col-gutter-md">
+      <div class="col-12 col-sm-6 col-md-4 col-lg-3" v-for="modulo in modulos" :key="modulo.to">
+        <q-card bordered class="module-card cursor-pointer" @click="$router.push(modulo.to)">
+          <q-card-section class="row items-center no-wrap q-gutter-md">
+            <q-avatar :style="{ backgroundColor: modulo.bg }" size="48px" class="text-h6">
+              {{ modulo.icon }}
+            </q-avatar>
+            <div>
+              <div class="text-subtitle1 text-weight-bold">{{ modulo.title }}</div>
+              <div class="text-caption text-grey-7">{{ modulo.desc }}</div>
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
-
-      <div class="metric-card branch-orange">
-        <div class="metric-header">
-          <span class="metric-title">Exames & Laudos</span>
-          <div class="mini-icon">LAB</div>
-        </div>
-        <div class="metric-body">
-          <span class="metric-value">{{ totais.exames }}</span>
-          <span class="metric-badge">Aguardando resultado</span>
-        </div>
-      </div>
-
-      <div class="metric-card branch-green">
-        <div class="metric-header">
-          <span class="metric-title">Catálogo de Fórmulas</span>
-          <div class="mini-icon">MED</div>
-        </div>
-        <div class="metric-body">
-          <span class="metric-value">{{ totais.medicamentos }}</span>
-          <span class="metric-badge">Itens ativos</span>
-        </div>
-      </div>
-
-      <div class="metric-card branch-purple">
-        <div class="metric-header">
-          <span class="metric-title">Prescrições Emitidas</span>
-          <div class="mini-icon">REC</div>
-        </div>
-        <div class="metric-body">
-          <span class="metric-value">{{ totais.receitas }}</span>
-          <span class="metric-badge">Histórico atualizado</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="actions-section">
-      <h2 class="section-title">Módulos de Acesso Rápido</h2>
-      
-      <div class="actions-grid">
-        <router-link to="/pacientes" class="action-tile">
-          <div class="tile-icon-wrapper blue">👥</div>
-          <div class="tile-content">
-            <h3>Pacientes</h3>
-            <p>Gerenciamento de cadastros e históricos de pacientes</p>
-          </div>
-        </router-link>
-
-        <router-link to="/medicos" class="action-tile">
-          <div class="tile-icon-wrapper teal">🩺</div>
-          <div class="tile-content">
-            <h3>Médicos</h3>
-            <p>Controle do corpo clínico e especialidades</p>
-          </div>
-        </router-link>
-
-        <router-link to="/anamneses" class="action-tile">
-          <div class="tile-icon-wrapper gray">📝</div>
-          <div class="tile-content">
-            <h3>Anamneses</h3>
-            <p>Histórico de saúde e entrevistas iniciais</p>
-          </div>
-        </router-link>
-
-        <router-link to="/consultas" class="action-tile">
-          <div class="tile-icon-wrapper blue">📅</div>
-          <div class="tile-content">
-            <h3>Consultas</h3>
-            <p>Agendamentos de horários e retornos médicos</p>
-          </div>
-        </router-link>
-
-        <router-link to="/cids" class="action-tile">
-          <div class="tile-icon-wrapper gray">📋</div>
-          <div class="tile-content">
-            <h3>Tabela CIDs</h3>
-            <p>Classificação Internacional de Doenças</p>
-          </div>
-        </router-link>
-
-        <router-link to="/atestados" class="action-tile">
-          <div class="tile-icon-wrapper teal">📄</div>
-          <div class="tile-content">
-            <h3>Atestados Médicos</h3>
-            <p>Emissão de justificativas e dispensas legais</p>
-          </div>
-        </router-link>
-
-        <router-link to="/medicamentos" class="action-tile">
-          <div class="tile-icon-wrapper orange">📦</div>
-          <div class="tile-content">
-            <h3>Medicamentos</h3>
-            <p>Controle de fórmulas e catálogo ativo</p>
-          </div>
-        </router-link>
-
-        <router-link to="/receitas" class="action-tile">
-          <div class="tile-icon-wrapper purple">💊</div>
-          <div class="tile-content">
-            <h3>Receitas</h3>
-            <p>Prescrições e posologias médicas integradas</p>
-          </div>
-        </router-link>
-
-        <router-link to="/exames-solicitados" class="action-tile">
-          <div class="tile-icon-wrapper indigo">🧪</div>
-          <div class="tile-content">
-            <h3>Exames Solicitados</h3>
-            <p>Pedidos de análises laboratoriais e diagnósticos</p>
-          </div>
-        </router-link>
-
-        <router-link to="/resultados-exames" class="action-tile">
-          <div class="tile-icon-wrapper red">📊</div>
-          <div class="tile-content">
-            <h3>Resultados de Exames</h3>
-            <p>Emissão e visualização de laudos técnicos</p>
-          </div>
-        </router-link>
-      </div>
-    </section>
-  </div>
+    </div>
+  </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '../services/api.js';
+import { ref, onMounted } from 'vue'
+import api from '../services/api.js'
 
-const totais = ref({ consultas: 0, exames: 0, medicamentos: 0, receitas: 0 });
+const totais = ref({ consultas: 0, exames: 0, medicamentos: 0, receitas: 0 })
+
+const metricCards = [
+  { key: 'consultas', title: 'Consultas Agendadas', badge: 'REG', subtitle: 'Pacientes do dia', color: '#2563eb' },
+  { key: 'exames', title: 'Exames & Laudos', badge: 'LAB', subtitle: 'Aguardando resultado', color: '#ea580c' },
+  { key: 'medicamentos', title: 'Catálogo de Fórmulas', badge: 'MED', subtitle: 'Itens ativos', color: '#16a34a' },
+  { key: 'receitas', title: 'Prescrições Emitidas', badge: 'REC', subtitle: 'Histórico atualizado', color: '#7c3aed' },
+]
+
+const modulos = [
+  { to: '/pacientes', icon: '👥', title: 'Pacientes', desc: 'Gerenciamento de cadastros e históricos', bg: '#eff6ff' },
+  { to: '/medicos', icon: '🩺', title: 'Médicos', desc: 'Controle do corpo clínico', bg: '#f0fdfa' },
+  { to: '/anamneses', icon: '📝', title: 'Anamneses', desc: 'Histórico de saúde e entrevistas', bg: '#f8fafc' },
+  { to: '/consultas', icon: '📅', title: 'Consultas', desc: 'Agendamentos e retornos médicos', bg: '#eff6ff' },
+  { to: '/cids', icon: '📋', title: 'Tabela CIDs', desc: 'Classificação Internacional de Doenças', bg: '#f8fafc' },
+  { to: '/atestados', icon: '📄', title: 'Atestados Médicos', desc: 'Emissão de justificativas legais', bg: '#f0fdfa' },
+  { to: '/medicamentos', icon: '📦', title: 'Medicamentos', desc: 'Controle de fórmulas e catálogo', bg: '#fff7ed' },
+  { to: '/receitas', icon: '💊', title: 'Receitas', desc: 'Prescrições e posologias integradas', bg: '#faf5ff' },
+  { to: '/exames-solicitados', icon: '🧪', title: 'Exames Solicitados', desc: 'Pedidos laboratoriais e diagnósticos', bg: '#e0e7ff' },
+  { to: '/resultados-exames', icon: '📊', title: 'Resultados de Exames', desc: 'Emissão e visualização de laudos', bg: '#fef2f2' },
+]
 
 const carregarMétricasDoDashboard = async () => {
   try {
     const carregarContagem = async (url) => {
       try {
-        const res = await api.get(url);
-        return res.data?.length || 0;
-      } catch { return 0; }
-    };
-    totais.value.consultas = await carregarContagem('consulta/api/');
-    totais.value.medicamentos = await carregarContagem('medicamento/api/');
-    totais.value.receitas = await carregarContagem('receita/api/');
-    
-    let qtdExames = await carregarContagem('exameSolicitado/api/');
-    if (qtdExames === 0) qtdExames = await carregarContagem('examesolicitado/api/');
-    totais.value.exames = qtdExames;
-  } catch (error) {
-    console.error("Erro nas métricas:", error);
-  }
-};
+        const res = await api.get(url)
+        return res.data?.length || 0
+      } catch { return 0 }
+    }
+    totais.value.consultas = await carregarContagem('consulta/api/')
+    totais.value.medicamentos = await carregarContagem('medicamento/api/')
+    totais.value.receitas = await carregarContagem('receita/api/')
 
-onMounted(() => { carregarMétricasDoDashboard(); });
+    let qtdExames = await carregarContagem('exameSolicitado/api/')
+    if (qtdExames === 0) qtdExames = await carregarContagem('examesolicitado/api/')
+    totais.value.exames = qtdExames
+  } catch (error) {
+    console.error('Erro nas métricas:', error)
+  }
+}
+
+onMounted(() => { carregarMétricasDoDashboard() })
 </script>
 
 <style scoped>
-.dashboard-wrapper {
-  padding: 32px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f4f6f8;
-  min-height: 100vh;
-  color: #1e293b;
-}
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 20px;
-}
-.header-titles h1 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 4px 0;
-  letter-spacing: -0.5px;
-}
-.header-titles p {
-  font-size: 14px;
-  color: #64748b;
-  margin: 0;
-}
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
-}
-.metric-card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  position: relative;
-  overflow: hidden;
-}
-.metric-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-}
-.branch-blue::before { background-color: #2563eb; }
-.branch-orange::before { background-color: #ea580c; }
-.branch-green::before { background-color: #16a34a; }
-.branch-purple::before { background-color: #7c3aed; }
-
-.metric-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.metric-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.mini-icon {
-  font-size: 11px;
-  background: #f1f5f9;
-  padding: 4px 8px;
-  border-radius: 4px;
-  color: #94a3b8;
-  font-weight: bold;
-}
-.metric-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #0f172a;
-  line-height: 1;
-  margin-bottom: 6px;
-}
-.metric-badge {
-  font-size: 12px;
-  color: #94a3b8;
-}
-.section-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #334155;
-  margin-bottom: 20px;
-}
-.actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-}
-.action-tile {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-.action-tile:hover {
-  transform: translateY(-2px);
-  border-color: #cbd5e1;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-}
-.tile-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-}
-.tile-icon-wrapper.blue { background-color: #eff6ff; }
-.tile-icon-wrapper.gray { background-color: #f8fafc; }
-.tile-icon-wrapper.teal { background-color: #f0fdfa; }
-.tile-icon-wrapper.orange { background-color: #fff7ed; }
-.tile-icon-wrapper.purple { background-color: #faf5ff; }
-.tile-icon-wrapper.indigo { background-color: #e0e7ff; }
-.tile-icon-wrapper.red { background-color: #fef2f2; }
-
-.tile-content h3 {
-  margin: 0 0 2px 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e293b;
-}
-.tile-content p {
-  margin: 0;
-  font-size: 12px;
-  color: #64748b;
-}
+.metric-card { transition: transform 0.2s; }
+.metric-card:hover { transform: translateY(-2px); }
+.module-card { transition: all 0.2s; }
+.module-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 </style>

@@ -1,160 +1,144 @@
 <template>
-  <div class="medico-view">
-    <h1>Controle de Médicos</h1>
+  <q-page padding>
+    <div class="text-h4 text-weight-bold q-mb-md">Controle de Médicos</div>
 
-    <MedicoCard 
-      v-model="form" 
-      @salvar="salvarMedico" 
-      @cancelar="cancelarEdicao" 
-    />
+    <MedicoCard v-model="form" @salvar="salvarMedico" @cancelar="cancelarEdicao" />
 
-    <hr />
+    <q-card bordered class="q-mb-lg">
+      <q-card-section>
+        <div class="text-subtitle1 text-weight-bold q-mb-md">Buscar Médico</div>
+        <div class="row q-col-gutter-sm items-end">
+          <div class="col-grow">
+            <q-input v-model="termoBusca" label="Pesquisar..." outlined dense clearable>
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <div class="col-auto">
+            <q-select
+              v-model="ordenacaoSelecionada"
+              :options="opcoesOrdenacao"
+              label="Ordenar por"
+              outlined dense
+              emit-value map-options
+              option-value="value" option-label="label"
+              style="min-width: 200px"
+            />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
-    <div class="busca-container">
-      <h3>Buscar Médico</h3>
-      <div class="busca-input-grupo">
-        <input 
-          v-model="termoBusca" 
-          placeholder="Buscar por nome ou especialidade..." 
-          class="input-busca"
-        />
-        <button v-if="termoBusca" @click="limparBusca" class="btn-limpar-busca">Limpar</button>
-      </div>
+    <div class="text-subtitle1 text-weight-bold q-mb-md">Médicos Cadastrados</div>
+    <q-inner-loading :showing="carregando" label="Buscando registros no servidor Django..." />
+    <div v-if="!carregando">
+      <p v-if="medicosFiltrados.length === 0" class="text-grey-7">Nenhum médico encontrado.</p>
+      <MedicoItem
+        v-for="medico in medicosFiltrados"
+        :key="medico.id"
+        :medico="medico"
+        @editar="prepararEdicao"
+        @deletar="deletarMedico"
+      />
     </div>
-
-    <div class="lista-secao">
-      <h3>Médicos Cadastrados</h3>
-      <div v-if="carregando">Buscando registros no servidor Django...</div>
-      <div v-else>
-        <p v-if="medicosFiltrados.length === 0">Nenhum médico encontrado.</p>
-        
-        <MedicoItem 
-          v-for="medico in medicosFiltrados" 
-          :key="medico.id" 
-          :medico="medico"
-          @editar="prepararEdicao"
-          @deletar="deletarMedico"
-        />
-      </div>
-    </div>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import api from '../services/api.js';
-import MedicoCard from '../components/MedicoCard.vue';
-import MedicoItem from '../components/MedicoItem.vue';
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import api from '../services/api.js'
+import MedicoCard from '../components/MedicoCard.vue'
+import MedicoItem from '../components/MedicoItem.vue'
 
-// Estados reativos
-const medicos = ref([]);
-const carregando = ref(true);
-const termoBusca = ref('');
+const $q = useQuasar()
+const medicos = ref([])
+const carregando = ref(true)
+const termoBusca = ref('')
+const ordenacaoSelecionada = ref('nome_asc')
 
-// Estado inicial espelhando os campos do MedicoSerializer do Django
+const opcoesOrdenacao = [
+  { label: 'Nome (A-Z)', value: 'nome_asc' },
+  { label: 'Nome (Z-A)', value: 'nome_desc' },
+]
+
 const estadoInicialForm = () => ({
-  id: null,
-  nome: '',
-  sobrenome: '',
-  cpf: '',
-  telefone: '',
-  email: '',
-  crm: '',
-  especialidade: 'Clínico Geral',
-  matricula: '',
-  data_contratacao: '',
-  cargo: '',
-  esta_ativo: true
-});
+  id: null, nome: '', sobrenome: '', cpf: '', telefone: '', email: '',
+  crm: '', especialidade: 'Clínico Geral', matricula: '', data_contratacao: '', cargo: '', esta_ativo: true
+})
 
-const form = ref(estadoInicialForm());
+const form = ref(estadoInicialForm())
 
-// 1. GET - Listar Médicos
 const buscarMedicos = async () => {
-  carregando.value = true;
+  carregando.value = true
   try {
-    const response = await api.get('medico/api/');
-    medicos.value = response.data;
+    const response = await api.get('medico/api/')
+    medicos.value = response.data
   } catch (error) {
-    console.error("Erro ao carregar médicos do Django:", error);
+    console.error('Erro ao carregar médicos do Django:', error)
   } finally {
-    carregando.value = false;
+    carregando.value = false
   }
-};
+}
 
-// 2. POST / PATCH - Criar ou Editar Médico
 const salvarMedico = async () => {
   try {
     if (form.value.id) {
-      await api.patch(`medico/api/${form.value.id}/`, form.value);
-      alert("Médico atualizado com sucesso!");
+      await api.patch(`medico/api/${form.value.id}/`, form.value)
+      $q.notify({ type: 'positive', message: 'Médico atualizado com sucesso!' })
     } else {
-      await api.post('medico/api/', form.value);
-      alert("Médico cadastrado com sucesso!");
+      await api.post('medico/api/', form.value)
+      $q.notify({ type: 'positive', message: 'Médico cadastrado com sucesso!' })
     }
-    form.value = estadoInicialForm();
-    buscarMedicos();
+    form.value = estadoInicialForm()
+    buscarMedicos()
   } catch (error) {
-    console.error("Erro ao salvar médico no Django:", error.response?.data || error);
-    alert("Falha ao salvar médico. Verifique os campos preenchidos.");
+    console.error('Erro ao salvar médico no Django:', error.response?.data || error)
+    $q.notify({ type: 'negative', message: 'Falha ao salvar médico. Verifique os campos preenchidos.' })
   }
-};
+}
 
-// 3. DELETE - Remover Médico
-const deletarMedico = async (id) => {
-  if (confirm("Tem certeza que deseja excluir em definitivo este médico?")) {
+const deletarMedico = (id) => {
+  $q.dialog({
+    title: 'Confirmar exclusão',
+    message: 'Tem certeza que deseja excluir em definitivo este médico?',
+    cancel: { label: 'Cancelar', flat: true, color: 'grey' },
+    ok: { label: 'Excluir', color: 'negative' },
+    persistent: true
+  }).onOk(async () => {
     try {
-      await api.delete(`medico/api/${id}/`);
-      buscarMedicos();
+      await api.delete(`medico/api/${id}/`)
+      buscarMedicos()
     } catch (error) {
-      console.error("Erro ao deletar médico do Django:", error);
+      console.error('Erro ao deletar médico do Django:', error)
     }
-  }
-};
+  })
+}
 
-// Lógica de Edição: preenche o form com os dados da linha
 const prepararEdicao = (medico) => {
-  form.value = { ...medico };
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+  form.value = { ...medico }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
-const cancelarEdicao = () => {
-  form.value = estadoInicialForm();
-};
+const cancelarEdicao = () => { form.value = estadoInicialForm() }
 
-// Filtro reativo que replica o Q(nome__icontains) | Q(especialidade__icontains) do Django
 const medicosFiltrados = computed(() => {
-  if (!termoBusca.value) {
-    return medicos.value;
+  let lista = [...medicos.value]
+  if (termoBusca.value) {
+    const termo = termoBusca.value.toLowerCase()
+    lista = lista.filter(m => {
+      const nomeCompleto = `${m.nome} ${m.sobrenome}`.toLowerCase()
+      return nomeCompleto.includes(termo) || m.especialidade.toLowerCase().includes(termo)
+    })
   }
-  const termo = termoBusca.value.toLowerCase();
-  return medicos.value.filter(medico => {
-    const nomeCompleto = `${medico.nome} ${medico.sobrenome}`.toLowerCase();
-    const esp = medico.especialidade.toLowerCase();
-    return nomeCompleto.includes(termo) || esp.includes(termo);
-  });
-});
+  lista.sort((a, b) => {
+    const nomeA = `${a.nome} ${a.sobrenome}`.toLowerCase()
+    const nomeB = `${b.nome} ${b.sobrenome}`.toLowerCase()
+    return ordenacaoSelecionada.value === 'nome_desc'
+      ? nomeB.localeCompare(nomeA, 'pt-BR')
+      : nomeA.localeCompare(nomeB, 'pt-BR')
+  })
+  return lista
+})
 
-const limparBusca = () => {
-  termoBusca.value = '';
-};
-
-// Gatilho de carregamento inicial
-onMounted(() => {
-  buscarMedicos();
-});
+onMounted(() => { buscarMedicos() })
 </script>
-
-<style scoped>
-.medico-view { padding: 20px; font-family: sans-serif; }
-.lista-secao { margin-top: 20px; }
-hr { border: 0; border-top: 1px solid #eee; margin: 30px 0; }
-
-.busca-container { margin-bottom: 25px; background: #fdfdfd; padding: 15px; border-radius: 6px; border: 1px solid #eaeaea; }
-.busca-container h3 { margin-top: 0; margin-bottom: 10px; color: #333; }
-.busca-input-grupo { display: flex; gap: 10px; max-width: 600px; }
-.input-busca { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-.input-busca:focus { border-color: #2196f3; outline: none; }
-.btn-limpar-busca { padding: 10px 15px; background-color: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; }
-.btn-limpar-busca:hover { background-color: #d5d5d5; }
-</style>

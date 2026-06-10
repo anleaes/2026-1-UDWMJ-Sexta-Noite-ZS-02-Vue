@@ -1,81 +1,49 @@
 <template>
-  <div class="anamnese-item">
-    <div class="info">
-      <h4>
+  <q-card class="my-card q-mb-md" bordered>
+    <q-card-section>
+      <div class="text-h6">
         Paciente: {{ nomePaciente }}
-        <span class="meta-data-topo">| Dr(a). {{ nomeMedico }}</span>
-      </h4>
-      <p class="data-registro"><strong>Data do Registro:</strong> {{ formatarDataHora(anamnese.data_criacao) }}</p>
-      
-      <div class="bloco-clinico">
-        <p><strong>Queixa Principal:</strong> {{ anamnese.queixa_principal }}</p>
-        <p><strong>Alergias:</strong> <span class="destaque-alergia">{{ anamnese.alergias }}</span></p>
-        <p><strong>Medicamentos em Uso:</strong> {{ anamnese.medicamentos }}</p>
+        <span class="text-body2 text-grey-8">| Dr(a). {{ nomeMedico }}</span>
+      </div>
+      <div class="text-caption text-grey-7 text-italic q-mb-sm">
+        <strong>Data do Registro:</strong> {{ formatarDataHora(anamnese.data_criacao) }}
       </div>
 
-      <div class="bloco-habitos">
-        <span class="badge-habito">
+      <q-card-section class="q-pa-sm bg-grey-1 rounded-borders">
+        <p class="q-mb-xs"><strong>Queixa Principal:</strong> {{ anamnese.queixa_principal }}</p>
+        <p class="q-mb-xs"><strong>Alergias:</strong> <span class="text-negative text-weight-bold">{{ anamnese.alergias }}</span></p>
+        <p class="q-mb-none"><strong>Medicamentos em Uso:</strong> {{ anamnese.medicamentos }}</p>
+      </q-card-section>
+
+      <div class="row q-gutter-sm q-mt-sm">
+        <q-badge color="grey-3" text-color="dark">
           <strong>Álcool:</strong> {{ traduzirChoices(anamnese.alcool) }}
-        </span>
-        <span class="badge-habito">
+        </q-badge>
+        <q-badge color="grey-3" text-color="dark">
           <strong>Fumante:</strong> {{ traduzirChoices(anamnese.fumante) }}
-        </span>
+        </q-badge>
       </div>
-    </div>
-    
-    <div class="acoes">
-      <button @click="$emit('editar', anamnese)" class="btn-edit">Editar</button>
-      <button @click="$emit('deletar', anamnese.id)" class="btn-delete">Excluir</button>
-    </div>
-  </div>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat color="warning" label="Editar" icon="edit" @click="$emit('editar', anamnese)" />
+      <q-btn flat color="negative" label="Excluir" icon="delete" @click="$emit('deletar', anamnese.id)" />
+    </q-card-actions>
+  </q-card>
 </template>
 
 <script setup>
 defineProps({
-  anamnese: {
-    type: Object,
-    required: true
-  },
-  nomePaciente: {
-    type: String,
-    default: 'Carregando paciente...'
-  },
-  nomeMedico: {
-    type: String,
-    default: 'Carregando médico...'
-  }
-});
-
-defineEmits(['editar', 'deletar']);
+  anamnese: { type: Object, required: true },
+  nomePaciente: { type: String, default: 'Carregando paciente...' },
+  nomeMedico: { type: String, default: 'Carregando médico...' }
+})
+defineEmits(['editar', 'deletar'])
 
 const formatarDataHora = (dataStr) => {
-  if (!dataStr) return '';
-  const data = new Date(dataStr);
-  return data.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-};
+  if (!dataStr) return ''
+  return new Date(dataStr).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+}
 
-const traduzirChoices = (opcao) => {
-  const m = {
-    'NAO': 'Não consome',
-    'EVE': 'Eventual',
-    'DIA': 'Diário'
-  };
-  return m[opcao] || opcao;
-};
+const traduzirChoices = (opcao) => ({ NAO: 'Não consome', EVE: 'Eventual', DIA: 'Diário' }[opcao] || opcao)
 </script>
-
-<style scoped>
-.anamnese-item { border: 1px solid #e0e0e0; padding: 18px; margin-bottom: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid #2196f3; }
-.info h4 { margin: 0 0 4px 0; color: #2c3e50; font-size: 17px; }
-.meta-data-topo { color: #555; font-weight: normal; font-size: 15px; margin-left: 5px; }
-.data-registro { margin: 0 0 12px 0; font-size: 12px; color: #7f8c8d; font-style: italic; }
-.bloco-clinico p { margin: 6px 0; color: #444; font-size: 14px; line-height: 1.4; }
-.destaque-alergia { color: #c0392b; font-weight: bold; }
-.bloco-habitos { margin-top: 12px; display: flex; gap: 10px; }
-.badge-habito { background: #eef2f7; color: #34495e; padding: 4px 10px; border-radius: 4px; font-size: 12px; border: 1px solid #d6e0ea; }
-.acoes button { margin-left: 8px; padding: 8px 16px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
-.btn-edit { background-color: #f39c12; color: #fff; }
-.btn-edit:hover { background-color: #e67e22; }
-.btn-delete { background-color: #c0392b; color: #fff; }
-.btn-delete:hover { background-color: #a62c20; }
-</style>
